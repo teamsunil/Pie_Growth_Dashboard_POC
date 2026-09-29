@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pie Growth Intelligence (POC)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+<style>
+:root{
+  --bg:#F7F7F7; --card:#FFFFFF; --ink:#17172B; --muted:#6C6C7E; --line:#E6E6EA;
+  --mint:#5CE1CC; --mint-ink:#0E8C78; --mint-soft:#E3FAF6; --violet:#8C7CF0; --amber:#F2A93B;
+  --red:#DE4B55; --green:#119E7C; --chip:#EFEFF2;
+  --font:"Outfit", "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101217; --card:#191C23; --ink:#F1F1F5; --muted:#9A9AAD; --line:#2A2E37;
+    --mint-ink:#5CE1CC; --mint-soft:#13302C; --chip:#23262F;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101217; --card:#191C23; --ink:#F1F1F5; --muted:#9A9AAD; --line:#2A2E37;
+  --mint-ink:#5CE1CC; --mint-soft:#13302C; --chip:#23262F;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--mint-ink);outline-offset:2px;border-radius:8px}
+.wrap{max-width:1280px;margin:0 auto;padding:0 24px}
+
+/* Header */
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid transparent}
+header.scrolled{border-bottom-color:var(--line)}
+.head{display:flex;align-items:center;gap:24px;height:76px}
+.logo{font-weight:700;font-size:34px;letter-spacing:-1.2px;line-height:1;display:flex;align-items:baseline;gap:2px;flex-shrink:0}
+.logo small{font-size:13px;font-weight:500;color:var(--muted);letter-spacing:0;margin-left:10px}
+nav{display:flex;gap:4px;flex:1;justify-content:center;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{background:none;border:0;padding:9px 14px;border-radius:999px;font-weight:500;font-size:15px;white-space:nowrap;color:var(--ink)}
+nav button:hover{background:var(--chip)}
+nav button[aria-current="page"]{background:var(--ink);color:var(--bg)}
+.right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.pill{background:var(--mint);color:#10231F;border:0;border-radius:999px;padding:11px 22px;font-weight:600}
+.pill:hover{filter:brightness(.96)}
+.pill.ghost{background:var(--chip);color:var(--ink)}
+.pill.sm{padding:8px 16px;font-size:14px}
+.demo{font-size:12px;color:var(--muted);border:1px dashed var(--line);border-radius:999px;padding:4px 10px}
+.iconbtn{width:40px;height:40px;border-radius:999px;border:0;background:var(--chip);display:grid;place-items:center}
+
+/* Filters */
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 0 6px}
+.seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px}
+.seg button{border:0;background:none;padding:7px 14px;border-radius:999px;font-weight:500;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--mint);color:#10231F}
+select{appearance:none;background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236C6C7E' fill='none' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 14px center;border:1px solid var(--line);border-radius:999px;padding:8px 36px 8px 16px;font-size:14px;font-weight:500}
+.filters .note{font-size:13px;color:var(--muted);margin-left:auto}
+
+main{padding:10px 0 60px}
+.view{display:none}
+.view.on{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.view.on{animation:none}}
+
+/* Hero headline (the one bold element) */
+.hero{padding:34px 0 30px;max-width:900px}
+.hero h1{font-size:clamp(34px,5vw,58px);line-height:1.05;letter-spacing:-1.8px;font-weight:600;margin:0 0 14px}
+.hero p{font-size:19px;font-weight:300;margin:0;color:var(--muted);max-width:64ch}
+.hero p b{font-weight:500;color:var(--ink)}
+h2{font-size:28px;letter-spacing:-.6px;font-weight:600;margin:28px 0 6px;line-height:1.15}
+h3{font-size:17px;font-weight:600;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 18px;max-width:72ch}
+
+/* Grid + cards */
+.grid{display:grid;gap:16px}
+.kpis{grid-template-columns:repeat(4,1fr)}
+.two{grid-template-columns:2fr 1fr}
+.half{grid-template-columns:1fr 1fr}
+.card{background:var(--card);border-radius:20px;padding:20px 22px;border:1px solid var(--line)}
+.card.flat{border:0}
+.kpi .l{font-size:14px;color:var(--muted);font-weight:500}
+.kpi .v{font-size:30px;font-weight:600;letter-spacing:-.8px;margin:4px 0 2px;line-height:1.1}
+.kpi .d{font-size:13px;font-weight:500}
+.up{color:var(--green)} .down{color:var(--red)}
+.spark{width:100%;height:30px;display:block;margin-top:8px}
+.cardhead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.chartbox{position:relative;height:290px}
+.chartbox.sm{height:240px}
+.muted{color:var(--muted)}
+
+/* Funnel bars */
+.fstage{margin:12px 0}
+.fstage .row{display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px}
+.fstage .row b{font-weight:600}
+.bar{height:34px;background:var(--chip);border-radius:10px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--mint);border-radius:10px;transition:width .5s ease}
+.drop{font-size:12px;color:var(--muted);margin-top:4px}
+
+/* Tables */
+.tscroll{overflow-x:auto;margin:0 -22px;padding:0 22px}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:760px}
+th{text-align:left;font-weight:500;color:var(--muted);padding:10px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th.sort{cursor:pointer;user-select:none}
+th.sort:hover{color:var(--ink)}
+td{padding:12px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.who{display:flex;align-items:center;gap:10px}
+.av{width:32px;height:32px;border-radius:999px;display:grid;place-items:center;font-weight:600;font-size:13px;color:#10231F;flex-shrink:0}
+.link{font-size:13px;color:var(--mint-ink);text-decoration:none;font-weight:500}
+.tag{display:inline-block;font-size:12px;font-weight:500;padding:3px 10px;border-radius:999px;background:var(--chip);color:var(--ink)}
+.tag.good{background:var(--mint-soft);color:var(--mint-ink)}
+.tag.warn{background:rgba(242,169,59,.16);color:#A86A08}
+.tag.bad{background:rgba(222,75,85,.13);color:var(--red)}
+.tag.info{background:rgba(140,124,240,.15);color:#6A58D6}
+:root[data-theme="dark"] .tag.warn{color:var(--amber)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tag.warn{color:var(--amber)} :root:not([data-theme="light"]) .tag.info{color:#B3A8FF}}
+:root[data-theme="dark"] .tag.info{color:#B3A8FF}
+
+/* Chips */
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chipbtn{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 14px;font-size:14px;font-weight:500}
+.chipbtn[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+/* Link builder */
+.builder{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}
+label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted);font-weight:500}
+input.t{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 14px;color:var(--ink)}
+label.f select{border-radius:12px;background-color:var(--bg)}
+.out{margin-top:14px;display:flex;gap:10px;align-items:center;background:var(--mint-soft);border-radius:12px;padding:12px 14px;flex-wrap:wrap}
+.out code{font-family:var(--font);font-weight:500;color:var(--mint-ink);word-break:break-all;flex:1}
+
+/* Brief */
+.brief{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;align-items:start}
+.bsec{padding:18px 0;border-top:1px solid var(--line)}
+.bsec:first-of-type{border-top:0;padding-top:4px}
+.bsec h3{display:flex;align-items:center;gap:10px}
+.dot{width:10px;height:10px;border-radius:999px;display:inline-block;flex-shrink:0}
+.bsec ul{margin:8px 0 0;padding-left:20px}
+.bsec li{margin:6px 0}
+.bsec li .tag{margin-left:6px;vertical-align:1px}
+.toggles{display:flex;flex-direction:column;gap:10px;margin:12px 0 16px}
+.tg{display:flex;justify-content:space-between;align-items:center;font-weight:500}
+.sw{width:44px;height:26px;border-radius:999px;background:var(--chip);border:0;position:relative;transition:background .2s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:left .2s}
+.sw[aria-checked="true"]{background:var(--mint)}
+.sw[aria-checked="true"]::after{left:21px}
+
+/* Telegram preview */
+.phone{background:#DCE8F0;border-radius:24px;padding:14px;margin-top:6px}
+:root[data-theme="dark"] .phone{background:#0E1621}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .phone{background:#0E1621}}
+.tgtop{display:flex;align-items:center;gap:10px;padding:4px 4px 12px;font-weight:600;font-size:14px;color:#17172B}
+:root[data-theme="dark"] .tgtop{color:#F1F1F5}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tgtop{color:#F1F1F5}}
+.tgtop .av{width:30px;height:30px}
+.msg{max-width:88%;padding:9px 12px;border-radius:14px;font-size:13.5px;line-height:1.45;margin:6px 0;background:#fff;color:#17172B}
+.msg.me{margin-left:auto;background:#E1FEC6}
+:root[data-theme="dark"] .msg{background:#182533;color:#F1F1F5}
+:root[data-theme="dark"] .msg.me{background:#2B5278}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .msg{background:#182533;color:#F1F1F5}:root:not([data-theme="light"]) .msg.me{background:#2B5278}}
+
+/* Analyst chat */
+.chat{display:flex;flex-direction:column;height:min(640px,calc(100vh - 230px));min-height:460px;padding:0;overflow:hidden}
+.log{flex:1;overflow-y:auto;padding:22px}
+.bubble{max-width:760px;margin:0 0 16px}
+.bubble.q{margin-left:auto;background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:18px 18px 4px 18px;width:fit-content;max-width:80%}
+.bubble.a{background:var(--bg);padding:16px 18px;border-radius:18px 18px 18px 4px}
+.bubble.a p{margin:0 0 8px}
+.bubble.a ul{margin:6px 0 10px;padding-left:20px}
+.bubble.a li{margin:4px 0}
+.src{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);margin-top:10px;padding-top:8px}
+.lbl{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;margin:6px 0 2px}
+.lbl.m{background:var(--mint-soft);color:var(--mint-ink)}
+.lbl.i{background:rgba(140,124,240,.15);color:#6A58D6}
+.composer{border-top:1px solid var(--line);padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.composer form{display:flex;gap:10px}
+.composer input{flex:1;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:12px 18px}
+.typing span{display:inline-block;width:7px;height:7px;border-radius:99px;background:var(--muted);margin-right:4px;animation:blink 1s infinite}
+.typing span:nth-child(2){animation-delay:.15s}.typing span:nth-child(3){animation-delay:.3s}
+@keyframes blink{0%,100%{opacity:.25}50%{opacity:1}}
+
+/* Sources */
+.conns{grid-template-columns:repeat(3,1fr)}
+.conn .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.conn p{margin:4px 0 12px;font-size:14px;color:var(--muted)}
+.meta{font-size:13px;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin-bottom:12px}
+.meta span:nth-child(odd){color:var(--muted)}
+.prog{height:6px;background:var(--chip);border-radius:9px;overflow:hidden;margin:6px 0 14px}
+.prog i{display:block;height:100%;background:var(--mint)}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:99px;animation:rot .7s linear infinite;vertical-align:-2px}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:12px 20px;border-radius:999px;font-weight:500;opacity:0;pointer-events:none;transition:all .25s;z-index:50}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+footer{color:var(--muted);font-size:13px;padding:10px 0 30px}
+
+@media (max-width:1080px){
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .two,.brief{grid-template-columns:1fr}
+  .conns{grid-template-columns:repeat(2,1fr)}
+  .head{height:auto;flex-wrap:wrap;padding:12px 0;gap:10px}
+  nav{order:3;flex-basis:100%;justify-content:flex-start}
+  .right{margin-left:auto}
+}
+@media (max-width:640px){
+  .wrap{padding:0 16px}
+  .half,.conns{grid-template-columns:1fr}
+  .kpi .v{font-size:24px}
+  .builder{grid-template-columns:1fr}
+  .demo{display:none}
+  .filters .note{margin-left:0;flex-basis:100%}
+  .hero{padding:20px 0 18px}
+}
+</style>
+</head>
+<body>
+<header id="hdr">
+  <div class="wrap head">
+    <div class="logo">Pie<small>Growth</small></div>
+    <nav aria-label="Sections">
+      <button data-view="overview" aria-current="page">Overview</button>
+      <button data-view="creators">Creators &amp; content</button>
+      <button data-view="funnel">Funnel</button>
+      <button data-view="brief">Daily brief</button>
+      <button data-view="analyst">Ask the analyst</button>
+      <button data-view="sources">Data sources</button>
+    </nav>
+    <div class="right">
+      <span class="demo">Demo data</span>
+      <button class="iconbtn" id="themeBtn" aria-label="Switch light or dark theme">◐</button>
+      <button class="pill sm" id="acct">Tommy</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="filters" id="filters">
+    <div class="seg" role="group" aria-label="Date range">
+      <button data-range="7" aria-pressed="false">7 days</button>
+      <button data-range="30" aria-pressed="true">30 days</button>
+      <button data-range="90" aria-pressed="false">90 days</button>
+    </div>
+    <select id="fPlatform" aria-label="Platform"></select>
+    <select id="fCreator" aria-label="Creator"></select>
+    <select id="fCampaign" aria-label="Campaign"></select>
+    <span class="note" id="fNote"></span>
+  </div>
+
+  <main>
+    <!-- OVERVIEW -->
+    <section class="view on" id="v-overview">
+      <div class="hero">
+        <h1 id="heroLine">Loading…</h1>
+        <p id="heroSub"></p>
+      </div>
+      <div class="grid kpis" id="kpis"></div>
+      <div class="grid two" style="margin-top:16px">
+        <div class="card">
+          <div class="cardhead">
+            <h3>Daily trend</h3>
+            <div class="seg" role="group" aria-label="Trend metric" id="trendSeg">
+              <button data-m="visits" aria-pressed="false">Visits</button>
+              <button data-m="regs" aria-pressed="false">Sign-ups</button>
+              <button data-m="installs" aria-pressed="true">Downloads</button>
+              <button data-m="purchases" aria-pressed="false">Purchases</button>
+              <button data-m="revenue" aria-pressed="false">Revenue</button>
+            </div>
+          </div>
+          <div class="chartbox"><canvas id="trendChart" aria-label="Daily trend chart"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Revenue by channel</h3>
+          <p class="muted" style="margin:0 0 8px;font-size:13px">Selected period</p>
+          <div class="chartbox sm"><canvas id="revChart" aria-label="Revenue by channel chart"></canvas></div>
+        </div>
+      </div>
+      <div class="grid half" style="margin-top:16px">
+        <div class="card">
+          <h3>Website funnel</h3>
+          <p class="muted" style="margin:0;font-size:13px">Desktop product: visit, sign-up, purchase</p>
+          <div id="webFunnel"></div>
+        </div>
+        <div class="card">
+          <h3>Reach vs results</h3>
+          <p class="muted" style="margin:0 0 8px;font-size:13px">Views are reported apart from conversions, so viral content isn't mistaken for revenue content.</p>
+          <div class="chartbox sm"><canvas id="reachChart" aria-label="Reach versus downloads by channel"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CREATORS -->
+    <section class="view" id="v-creators">
+      <h2>Creators &amp; content</h2>
+      <p class="sub">Every creator account now has its own Branch link, so downloads are tied to the creator who drove them. Confirmed tracking runs from 8 Sep 2026. Earlier weeks are estimates based on timing.</p>
+      <div class="grid kpis" id="cKpis"></div>
+      <div class="card" style="margin-top:16px">
+        <div class="cardhead"><h3>Creator leaderboard</h3><span class="tag good">Confirmed via Branch links</span></div>
+        <div class="tscroll"><table id="cTable"></table></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="cardhead"><h3>Top posts and ads</h3>
+          <div class="chips" id="postChips">
+            <button class="chipbtn" data-pt="all" aria-pressed="true">All</button>
+            <button class="chipbtn" data-pt="Organic" aria-pressed="false">Organic</button>
+            <button class="chipbtn" data-pt="Paid" aria-pressed="false">Paid</button>
+          </div>
+        </div>
+        <div class="tscroll"><table id="pTable"></table></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>Create a creator link</h3>
+        <p class="muted" style="margin:0 0 14px;font-size:14px">One link per creator account, for their link in bio. Clicks and installs start counting from the moment it goes live.</p>
+        <form class="builder" id="linkForm">
+          <label class="f">Creator handle<input class="t" id="lHandle" placeholder="@newcreator" required></label>
+          <label class="f">Platform<select id="lPlat"><option>TikTok</option><option>Instagram</option><option>YouTube</option></select></label>
+          <button class="pill" type="submit">Create link</button>
+        </form>
+        <div class="out" id="lOut" hidden><code id="lCode"></code><button class="pill sm ghost" id="lCopy" type="button">Copy link</button></div>
+      </div>
+    </section>
+
+    <!-- FUNNEL -->
+    <section class="view" id="v-funnel">
+      <h2>Cross-channel funnel</h2>
+      <p class="sub">From first view or click through to revenue. Pick a channel to see where people drop off.</p>
+      <div class="chips" id="fChips" style="margin-bottom:16px"></div>
+      <div class="grid two">
+        <div class="card"><h3 id="fTitle">All channels</h3><div id="bigFunnel"></div></div>
+        <div class="card">
+          <h3>How attribution works here</h3>
+          <div class="bsec" style="border:0;padding-top:6px">
+            <p style="margin:0 0 10px"><span class="tag good">Confirmed</span> A Branch link, UTM or campaign ID connects the click to the download or purchase.</p>
+            <p style="margin:0 0 10px"><span class="tag info">Estimated</span> Organic spikes with no link are matched by timing. Shown as a direction, not proof.</p>
+            <p style="margin:0"><span class="tag">Not added up</span> GA4, Firebase, Branch, Meta and store totals follow the metric dictionary, so they are never double counted.</p>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>By channel</h3>
+        <div class="tscroll"><table id="chTable"></table></div>
+      </div>
+    </section>
+
+    <!-- BRIEF -->
+    <section class="view" id="v-brief">
+      <h2>Daily brief</h2>
+      <p class="sub" id="briefDate"></p>
+      <div class="brief">
+        <div class="card" id="briefBody"></div>
+        <div>
+          <div class="card">
+            <h3>Delivery</h3>
+            <div class="toggles">
+              <div class="tg">Email at 8:00 <button class="sw" role="switch" aria-checked="true" aria-label="Email"></button></div>
+              <div class="tg">In the dashboard <button class="sw" role="switch" aria-checked="true" aria-label="In the dashboard"></button></div>
+              <div class="tg">Telegram chat <button class="sw" role="switch" aria-checked="true" aria-label="Telegram chat"></button></div>
+            </div>
+            <button class="pill sm" id="sendTest">Send test brief</button>
+          </div>
+          <div class="card" style="margin-top:16px">
+            <h3>Telegram preview</h3>
+            <p class="muted" style="margin:0;font-size:13px">Reply in the chat to ask follow-up questions.</p>
+            <div class="phone" id="tg"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANALYST -->
+    <section class="view" id="v-analyst">
+      <h2>Ask the analyst</h2>
+      <p class="sub">Answers come only from stored, reconciled metrics. Every answer names its source and date range, and separates what was measured from what is likely.</p>
+      <div class="card chat">
+        <div class="log" id="log" aria-live="polite"></div>
+        <div class="composer">
+          <div class="chips" id="suggest"></div>
+          <form id="askForm">
+            <input id="askIn" placeholder="Ask about downloads, creators, ads, revenue…" autocomplete="off" aria-label="Your question">
+            <button class="pill" type="submit">Ask</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- SOURCES -->
+    <section class="view" id="v-sources">
+      <h2>Data sources</h2>
+      <p class="sub">Each connection refreshes on a schedule and shows its last success. The dashboard reads stored data, so it stays fast even when a provider is slow.</p>
+      <div class="grid conns" id="conns"></div>
+      <div class="card" style="margin-top:16px">
+        <h3>Metric dictionary</h3>
+        <p class="muted" style="margin:0 0 10px;font-size:14px">Which source is the source of truth for each number.</p>
+        <div class="tscroll"><table id="dict"></table></div>
+      </div>
+    </section>
+  </main>
+  <footer>Proof of concept with generated demo data. Numbers are illustrative and not from Pie's accounts.</footer>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ---------- Helpers ---------- */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const fmt = n => n >= 1e6 ? (n/1e6).toFixed(2)+'M' : n >= 1e4 ? (n/1e3).toFixed(1)+'k' : Math.round(n).toLocaleString('en-GB');
+const gbp = n => '£' + (n >= 1e6 ? (n/1e6).toFixed(2)+'M' : n >= 1e4 ? (n/1e3).toFixed(1)+'k' : Math.round(n).toLocaleString('en-GB'));
+const pct = (n,d=1) => (n*100).toFixed(d)+'%';
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const dk = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const dl = d => d.getDate()+' '+MONTHS[d.getMonth()];
+const shareText = x => x>=.95 ? 'nearly all' : 'about '+Math.round(x*100)+'%';
+function rng(seed){ return () => (seed = seed * 16807 % 2147483647, (seed-1)/2147483646); }
+function toast(t){ const el=$('#toast'); el.textContent=t; el.classList.add('on'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('on'),2200); }
+const sum = (rows,f) => rows.reduce((a,r)=>a+r[f],0);
+
+/* ---------- Demo data model ---------- */
+const N = 180;
+const DATES = [...Array(N)].map((_,i)=> new Date(2026, 8, 28-(N-1-i)));
+const KEYS = DATES.map(dk);
+const TRACK_START = '2026-09-08';
+const SPIKE = {'2026-09-25':3.4,'2026-09-26':1.9,'2026-09-27':1.35};
+
+const CHANNELS = [
+  {id:'tiktok',   name:'TikTok organic',    platform:'TikTok',    base:3800, reg:.052, inst:.14, buy:.075, imp:30, color:'#5CE1CC'},
+  {id:'instagram',name:'Instagram organic', platform:'Instagram', base:2400, reg:.048, inst:.12, buy:.07,  imp:24, color:'#8C7CF0'},
+  {id:'meta',     name:'Meta Ads',          platform:'Meta Ads',  base:3000, reg:.061, inst:.16, buy:.09,  imp:38, color:'#F2A93B', paid:true},
+  {id:'google',   name:'Google Search',     platform:'Google',    base:3500, reg:.07,  inst:.06, buy:.11,  imp:11, color:'#FF8A9A'},
+  {id:'direct',   name:'Direct and other',  platform:'Other',     base:1400, reg:.08,  inst:.09, buy:.12,  imp:0,  color:'#9AA3B5'}
+];
+const CH = Object.fromEntries(CHANNELS.map(c=>[c.id,c]));
+const CAMPAIGNS = [
+  {id:'mtd', name:'MTD Awareness', share:.38},
+  {id:'refund', name:'Refund Estimator', share:.37},
+  {id:'retarget', name:'Retargeting', share:.25}
+];
+const CREATORS = [
+  {id:'tara', handle:'@taxwithtara',    platform:'TikTok',    ch:'tiktok',    share:.22, color:'#5CE1CC'},
+  {id:'priya',handle:'@priyaspends',    platform:'Instagram', ch:'instagram', share:.24, color:'#8C7CF0'},
+  {id:'sam',  handle:'@sidehustlesam',  platform:'TikTok',    ch:'tiktok',    share:.17, color:'#F2A93B'},
+  {id:'lucy', handle:'@lucy.landlord',  platform:'Instagram', ch:'instagram', share:.18, color:'#FF8A9A'},
+  {id:'ella', handle:'@ella.creates',   platform:'Instagram', ch:'instagram', share:.14, color:'#7CC4F2'},
+  {id:'dan',  handle:'@dan.freelances', platform:'TikTok',    ch:'tiktok',    share:.12, color:'#B7E36B'},
+  {id:'omar', handle:'@omarbuilds',     platform:'TikTok',    ch:'tiktok',    share:.09, color:'#F2C94C'},
+  {id:'jay',  handle:'@jaysaves',       platform:'TikTok',    ch:'tiktok',    share:.08, color:'#C9A7F5'}
+];
+const CR = Object.fromEntries(CREATORS.map(c=>[c.id,c]));
+const shareFor = (c,k) => (c.id==='tara' && SPIKE[k]) ? .55 : (c.ch==='tiktok' && SPIKE[k]) ? c.share*.6 : c.share;
+
+const ROWS = [];
+(function gen(){
+  const r = rng(42);
+  for (let i=0;i<N;i++){
+    const d = DATES[i], k = KEYS[i], wd = d.getDay();
+    const g = 1 + i/N*.35, w = (wd===5||wd===6) ? .86 : wd===0 ? 1.06 : 1;
+    for (const ch of CHANNELS){
+      const spike = ch.id==='tiktok' && SPIKE[k] ? SPIKE[k] : 1;
+      const visits = Math.round(ch.base*g*w*spike*(.9+r()*.2));
+      let regRate = ch.reg, instRate = ch.inst, spend = 0;
+      if (spike>1) regRate *= .8;
+      if (ch.paid){ spend = visits*.14*(.95+r()*.1); if (i >= N-7) instRate *= .8; }
+      const regs = Math.round(visits*regRate*(.92+r()*.16));
+      const installs = Math.round(visits*instRate*(.92+r()*.16));
+      const purchases = Math.round(installs*ch.buy + regs*.05);
+      const revenue = purchases*(36+r()*8);
+      ROWS.push({i,k,ch:ch.id,visits,regs,installs,purchases,revenue,spend,imps:visits*ch.imp});
+    }
+  }
+})();
+
+const POSTS = [
+  {t:'3 expenses HMRC lets you claim (most people miss #2)', c:'tara', type:'Organic', date:'24 Sep', views:1920000, clicks:21400, installs:4310},
+  {t:'POV: your accountant sees your receipts', c:'jay', type:'Organic', date:'21 Sep', views:2410000, clicks:6100, installs:212},
+  {t:'Landlord? This is what MTD means for you', c:'lucy', type:'Organic', date:'19 Sep', views:388000, clicks:7900, installs:1260},
+  {t:'Refund Estimator, static v2', c:null, acct:'Meta Ads', type:'Paid', date:'15 Sep', views:910000, clicks:18200, installs:2380},
+  {t:'I filed my tax return on the bus', c:'priya', type:'Organic', date:'17 Sep', views:522000, clicks:9800, installs:1480},
+  {t:'MTD explained in 30 seconds, video', c:null, acct:'Meta Ads', type:'Paid', date:'10 Sep', views:1240000, clicks:15600, installs:1710},
+  {t:'Side hustle over £1,000? Watch this', c:'sam', type:'Organic', date:'22 Sep', views:640000, clicks:8300, installs:1190},
+  {t:'Freelancer tax checklist', c:'dan', type:'Organic', date:'18 Sep', views:215000, clicks:3900, installs:640},
+  {t:'Content creator? You can claim this', c:'ella', type:'Organic', date:'20 Sep', views:301000, clicks:5200, installs:810},
+  {t:'Retargeting, "finish your return"', c:null, acct:'Meta Ads', type:'Paid', date:'12 Sep', views:280000, clicks:6400, installs:1020},
+  {t:'Tools I use for my building business', c:'omar', type:'Organic', date:'23 Sep', views:176000, clicks:2100, installs:330}
+];
+
+/* ---------- State + filtering ---------- */
+const state = { view:'overview', range:30, platform:'all', creator:'all', campaign:'all', metric:'installs', funnelCh:'all', postType:'all', sortKey:'installs', sortDir:-1 };
+
+function passes(r){
+  if (state.platform!=='all' && CH[r.ch].platform!==state.platform) return false;
+  if (state.campaign!=='all' && r.ch!=='meta') return false;
+  if (state.creator!=='all'){ const c=CR[state.creator]; if (r.ch!==c.ch || r.k<TRACK_START) return false; }
+  return true;
+}
+function scale(r){
+  let m = 1;
+  if (state.campaign!=='all') m *= CAMPAIGNS.find(c=>c.id===state.campaign).share;
+  if (state.creator!=='all') m *= shareFor(CR[state.creator], r.k);
+  if (m===1) return r;
+  return {...r, visits:r.visits*m, regs:r.regs*m, installs:r.installs*m, purchases:r.purchases*m, revenue:r.revenue*m, spend:r.spend*m, imps:r.imps*m};
+}
+function scoped(offset=0, days=state.range){
+  const endI = N-1-offset*days, startI = endI-days+1;
+  return ROWS.filter(r=>r.i>=startI && r.i<=endI && passes(r)).map(scale);
+}
+function totals(rows){
+  const t = {visits:0,regs:0,installs:0,purchases:0,revenue:0,spend:0,imps:0};
+  rows.forEach(r=>{ for (const f in t) t[f]+=r[f]; });
+  return t;
+}
+function series(rows, f, days=state.range){
+  const endI = N-1, startI = endI-days+1, out = new Array(days).fill(0);
+  rows.forEach(r=>{ const j=r.i-startI; if (j>=0 && j<days) out[j]+=r[f]; });
+  return out;
+}
+function byChannel(rows){
+  const m = {}; CHANNELS.forEach(c=>m[c.id]=totals([]));
+  rows.forEach(r=>{ for (const f in m[r.ch]) m[r.ch][f]+=r[f]; });
+  return m;
+}
+/* unfiltered helpers for brief + analyst */
+const rowsBetween = (a,b) => ROWS.filter(r=>r.i>=a && r.i<=b);
+const idx = k => KEYS.indexOf(k);
+
+/* ---------- Charts ---------- */
+const charts = {};
+function mkChart(id, cfg){
+  const el = document.getElementById(id);
+  if (!window.Chart){ el.parentElement.innerHTML = '<p class="muted">The chart library did not load. Check your connection and reload.</p>'; return; }
+  if (charts[id]) charts[id].destroy();
+  Chart.defaults.font.family = css('--font');
+  Chart.defaults.color = css('--muted');
+  Chart.defaults.borderColor = css('--line');
+  charts[id] = new Chart(el, cfg);
+}
+function spark(arr, color){
+  const w=100,h=28,max=Math.max(...arr),min=Math.min(...arr);
+  const pts = arr.map((v,i)=>`${(i/(arr.length-1||1))*w},${h-2-((v-min)/(max-min||1))*(h-4)}`).join(' ');
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>`;
+}
+function delta(cur, prev, invert=false){
+  if (!prev) return '<span class="d muted">No earlier data</span>';
+  const d = cur/prev-1, good = invert ? d<0 : d>=0;
+  return `<span class="d ${good?'up':'down'}">${d>=0?'+':''}${pct(d)} vs previous ${state.range} days</span>`;
+}
+
+/* ---------- Filters UI ---------- */
+function initFilters(){
+  const plats = ['all',...new Set(CHANNELS.map(c=>c.platform))];
+  $('#fPlatform').innerHTML = plats.map(p=>`<option value="${p}">${p==='all'?'All platforms':p}</option>`).join('');
+  $('#fCreator').innerHTML = '<option value="all">All creators</option>' + CREATORS.map(c=>`<option value="${c.id}">${c.handle}</option>`).join('');
+  $('#fCampaign').innerHTML = '<option value="all">All campaigns</option>' + CAMPAIGNS.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  $$('[data-range]').forEach(b=>b.onclick=()=>{ state.range=+b.dataset.range; $$('[data-range]').forEach(x=>x.setAttribute('aria-pressed',x===b)); render(); });
+  $('#fPlatform').onchange = e=>{ state.platform=e.target.value; render(); };
+  $('#fCreator').onchange = e=>{ state.creator=e.target.value; if(state.creator!=='all'){state.campaign='all';$('#fCampaign').value='all';} render(); };
+  $('#fCampaign').onchange = e=>{ state.campaign=e.target.value; if(state.campaign!=='all'){state.creator='all';$('#fCreator').value='all';} render(); };
+}
+function filterNote(){
+  let n = '';
+  if (state.creator!=='all') n = 'Creator view uses confirmed Branch data from 8 Sep 2026.';
+  else if (state.campaign!=='all') n = 'Campaign filter applies to Meta Ads only.';
+  $('#fNote').textContent = n;
+}
+
+/* ---------- Overview ---------- */
+function renderOverview(){
+  const cur = scoped(0), prev = scoped(1), t = totals(cur), p = totals(prev);
+  const empty = cur.length===0;
+  // hero
+  const wkNow = totals(rowsBetween(N-7,N-1)), wkPrev = totals(rowsBetween(N-14,N-8));
+  const wow = wkNow.installs/wkPrev.installs-1;
+  const tt = totals(rowsBetween(N-7,N-1).filter(r=>r.ch==='tiktok')), tp = totals(rowsBetween(N-14,N-8).filter(r=>r.ch==='tiktok'));
+  const tShare = (tt.installs-tp.installs)/(wkNow.installs-wkPrev.installs);
+  $('#heroLine').textContent = `Downloads are ${wow>=0?'up':'down'} ${Math.round(Math.abs(wow)*100)}% this week. TikTok did most of the lifting.`;
+  $('#heroSub').innerHTML = `A single post from <b>@taxwithtara</b> on 24 Sep drove the spike. TikTok accounts for <b>${shareText(tShare)}</b> of the extra downloads. Meta Ads cost per download rose this week, so the brief suggests a creative refresh.`;
+
+  const KP = [
+    {l:'Visits', v:fmt(t.visits), c:t.visits, p:p.visits, f:'visits'},
+    {l:'Sign-ups', v:fmt(t.regs), c:t.regs, p:p.regs, f:'regs'},
+    {l:'Downloads', v:fmt(t.installs), c:t.installs, p:p.installs, f:'installs'},
+    {l:'Purchases', v:fmt(t.purchases), c:t.purchases, p:p.purchases, f:'purchases'},
+    {l:'Revenue', v:gbp(t.revenue), c:t.revenue, p:p.revenue, f:'revenue'},
+    {l:'Ad spend', v:gbp(t.spend), c:t.spend, p:p.spend, f:'spend', inv:true},
+    {l:'Visit to sign-up', v:t.visits?pct(t.regs/t.visits):'–', c:t.regs/t.visits, p:p.regs/p.visits, f:null},
+    {l:'Sign-up to purchase', v:t.regs?pct(t.purchases/t.regs):'–', c:t.purchases/t.regs, p:p.purchases/p.regs, f:null}
+  ];
+  const mint = css('--mint');
+  $('#kpis').innerHTML = KP.map(k=>`<div class="card kpi"><div class="l">${k.l}</div><div class="v">${empty?'–':k.v}</div>${empty||!isFinite(k.c)?'<span class="d muted">No data for this filter</span>':delta(k.c,k.p,k.inv)}${k.f&&!empty&&k.c?spark(series(cur,k.f),mint):''}</div>`).join('');
+
+  // trend
+  const labels = DATES.slice(N-state.range).map(dl);
+  const curS = series(cur, state.metric);
+  const prevS = (()=>{ const rows=scoped(1); const endI=N-1-state.range, startI=endI-state.range+1, out=new Array(state.range).fill(0); rows.forEach(r=>{const j=r.i-startI; if(j>=0&&j<state.range) out[j]+=r[state.metric];}); return out; })();
+  mkChart('trendChart',{type:'line',data:{labels,datasets:[
+    {label:'This period',data:curS,borderColor:mint,backgroundColor:mint+'33',fill:true,tension:.35,pointRadius:0,borderWidth:2.5},
+    {label:'Previous period',data:prevS,borderColor:css('--muted'),borderDash:[5,5],tension:.35,pointRadius:0,borderWidth:1.5}
+  ]},options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{boxWidth:10,usePointStyle:true}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${state.metric==='revenue'?gbp(c.raw):fmt(c.raw)}`}}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8}},y:{beginAtZero:true,ticks:{callback:v=>state.metric==='revenue'?gbp(v):fmt(v)}}}}});
+
+  // revenue doughnut
+  const bc = byChannel(cur), live = CHANNELS.filter(c=>bc[c.id].revenue>0);
+  mkChart('revChart',{type:'doughnut',data:{labels:live.map(c=>c.name),datasets:[{data:live.map(c=>Math.round(bc[c.id].revenue)),backgroundColor:live.map(c=>c.color),borderColor:css('--card'),borderWidth:3}]},options:{maintainAspectRatio:false,cutout:'64%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,usePointStyle:true}},tooltip:{callbacks:{label:c=>`${c.label}: ${gbp(c.raw)}`}}}}});
+
+  // web funnel
+  const stages = [['Website visits',t.visits],['Sign-ups',t.regs],['Purchases',t.purchases]];
+  $('#webFunnel').innerHTML = funnelHTML(stages);
+
+  // reach vs results
+  const rc = CHANNELS.filter(c=>c.imp && bc[c.id].imps>0);
+  mkChart('reachChart',{type:'bar',data:{labels:rc.map(c=>c.name),datasets:[
+    {label:'Views (k)',data:rc.map(c=>Math.round(bc[c.id].imps/1000)),backgroundColor:css('--line'),borderRadius:6},
+    {label:'Downloads',data:rc.map(c=>Math.round(bc[c.id].installs)),backgroundColor:mint,borderRadius:6}
+  ]},options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,usePointStyle:true}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,ticks:{callback:v=>fmt(v)}}}}});
+}
+function funnelHTML(stages){
+  const top = stages[0][1] || 1;
+  return stages.map((s,i)=>{
+    const w = Math.max(2, s[1]/top*100);
+    const conv = i>0 && stages[i-1][1] ? `<div class="drop">${pct(s[1]/stages[i-1][1])} of previous step</div>` : '';
+    return `<div class="fstage"><div class="row"><span>${s[0]}</span><b>${s[0]==='Revenue'?gbp(s[1]):fmt(s[1])}</b></div><div class="bar"><i style="width:${s[0]==='Revenue'?100:w}%"></i></div>${conv}</div>`;
+  }).join('');
+}
+
+/* ---------- Creators ---------- */
+function creatorStats(){
+  const endI=N-1, startI=Math.max(endI-state.range+1, idx(TRACK_START));
+  const rows = rowsBetween(startI,endI);
+  return CREATORS.filter(c=>(state.platform==='all'||c.platform===state.platform)&&(state.creator==='all'||c.id===state.creator)).map(c=>{
+    const cr = rows.filter(r=>r.ch===c.ch);
+    const s = {clicks:0,installs:0,regs:0,purchases:0,revenue:0}, daily=[];
+    cr.forEach(r=>{ const m=shareFor(c,r.k); s.clicks+=r.visits*1.18*m; s.installs+=r.installs*m; s.regs+=r.regs*m; s.purchases+=r.purchases*m; s.revenue+=r.revenue*m; daily.push(r.installs*m); });
+    return {...c,...s,rate:s.clicks?s.installs/s.clicks:0,daily};
+  });
+}
+function renderCreators(){
+  const cs = creatorStats();
+  const tot = cs.reduce((a,c)=>({installs:a.installs+c.installs,revenue:a.revenue+c.revenue,clicks:a.clicks+c.clicks}),{installs:0,revenue:0,clicks:0});
+  const endI=N-1, startI=Math.max(endI-state.range+1, idx(TRACK_START));
+  const org = totals(rowsBetween(startI,endI).filter(r=>r.ch==='tiktok'||r.ch==='instagram'));
+  const days = endI-startI+1;
+  $('#cKpis').innerHTML = [
+    ['Creators tracked', cs.length, `Links live since 8 Sep`],
+    ['Link clicks', fmt(tot.clicks), `Last ${days} days tracked`],
+    ['Downloads from creator links', fmt(tot.installs), `${org.installs?pct(tot.installs/org.installs,0):'–'} of organic downloads`],
+    ['Revenue from creator links', gbp(tot.revenue), `Last ${days} days tracked`]
+  ].map(k=>`<div class="card kpi"><div class="l">${k[0]}</div><div class="v">${k[1]}</div><span class="d muted">${k[2]}</span></div>`).join('');
+
+  const cols = [['handle','Creator'],['platform','Platform'],['link','Branch link'],['clicks','Clicks',1],['installs','Downloads',1],['rate','Click to download',1],['regs','Sign-ups',1],['purchases','Purchases',1],['revenue','Revenue',1],['trend','Trend']];
+  const sorted = [...cs].sort((a,b)=>(a[state.sortKey]>b[state.sortKey]?1:-1)*state.sortDir);
+  const sortable = new Set(['clicks','installs','rate','regs','purchases','revenue']);
+  $('#cTable').innerHTML = `<thead><tr>${cols.map(c=>`<th class="${c[2]?'num':''} ${sortable.has(c[0])?'sort':''}" data-k="${c[0]}">${c[1]}${state.sortKey===c[0]?(state.sortDir<0?' ▾':' ▴'):''}</th>`).join('')}</tr></thead><tbody>${
+    sorted.length? sorted.map(c=>`<tr>
+      <td><div class="who"><span class="av" style="background:${c.color}">${c.handle[1].toUpperCase()}</span><b style="font-weight:500">${c.handle}</b></div></td>
+      <td>${c.platform}</td>
+      <td><span class="link">pie.app.link/c-${c.id}</span></td>
+      <td class="num">${fmt(c.clicks)}</td><td class="num"><b style="font-weight:600">${fmt(c.installs)}</b></td><td class="num">${pct(c.rate)}</td>
+      <td class="num">${fmt(c.regs)}</td><td class="num">${fmt(c.purchases)}</td><td class="num">${gbp(c.revenue)}</td>
+      <td style="width:110px">${spark(c.daily,c.color)}</td></tr>`).join('')
+    : `<tr><td colspan="10" class="muted">No creators match this filter. Choose TikTok, Instagram or All platforms.</td></tr>`}</tbody>`;
+  $$('#cTable th.sort').forEach(th=>th.onclick=()=>{ const k=th.dataset.k; state.sortDir = state.sortKey===k ? -state.sortDir : -1; state.sortKey=k; renderCreators(); });
+
+  const posts = POSTS.filter(p=>(state.postType==='all'||p.type===state.postType)&&(state.creator==='all'||p.c===state.creator)&&(state.platform==='all'||(p.c?CR[p.c].platform:'Meta Ads')===state.platform)).sort((a,b)=>b.installs-a.installs);
+  $('#pTable').innerHTML = `<thead><tr><th>Post or ad</th><th>Account</th><th>Type</th><th>Posted</th><th class="num">Views</th><th class="num">Clicks</th><th class="num">Downloads</th><th class="num">Per 1k views</th><th>Reach vs results</th></tr></thead><tbody>${
+    posts.length ? posts.map(p=>{ const per=p.installs/p.views*1000; const tg = per>=2?['good','Converts well']:per<0.3?['warn','Reach, not results']:['','Mixed'];
+      return `<tr><td style="white-space:normal;min-width:240px">${p.t}</td><td>${p.c?CR[p.c].handle:p.acct}</td><td><span class="tag ${p.type==='Paid'?'info':''}">${p.type}</span></td><td>${p.date}</td><td class="num">${fmt(p.views)}</td><td class="num">${fmt(p.clicks)}</td><td class="num">${fmt(p.installs)}</td><td class="num">${per.toFixed(2)}</td><td><span class="tag ${tg[0]}">${tg[1]}</span></td></tr>`; }).join('')
+    : `<tr><td colspan="9" class="muted">No posts match these filters.</td></tr>`}</tbody>`;
+}
+function initCreators(){
+  $$('#postChips button').forEach(b=>b.onclick=()=>{ state.postType=b.dataset.pt; $$('#postChips button').forEach(x=>x.setAttribute('aria-pressed',x===b)); renderCreators(); });
+  $('#linkForm').onsubmit = e=>{
+    e.preventDefault();
+    const h = $('#lHandle').value.trim().replace(/^@/,'').toLowerCase().replace(/[^a-z0-9._]/g,'');
+    if (!h){ toast('Enter a creator handle to create a link'); return; }
+    const plat = $('#lPlat').value.toLowerCase();
+    const link = `https://pie.app.link/c-${h}?~channel=${plat}&~feature=link_in_bio&~campaign=creator_${h}`;
+    $('#lCode').textContent = link; $('#lOut').hidden = false; toast(`Link created for @${h}`);
+  };
+  $('#lCopy').onclick = async ()=>{ try{ await navigator.clipboard.writeText($('#lCode').textContent); toast('Link copied'); }catch(e){ toast('Select the link to copy it'); } };
+}
+
+/* ---------- Funnel ---------- */
+function renderFunnel(){
+  $('#fChips').innerHTML = [['all','All channels'],...CHANNELS.map(c=>[c.id,c.name])].map(c=>`<button class="chipbtn" data-fc="${c[0]}" aria-pressed="${state.funnelCh===c[0]}">${c[1]}</button>`).join('');
+  $$('#fChips button').forEach(b=>b.onclick=()=>{ state.funnelCh=b.dataset.fc; renderFunnel(); });
+  const cur = scoped(0), bc = byChannel(cur);
+  const t = state.funnelCh==='all' ? totals(cur) : bc[state.funnelCh];
+  $('#fTitle').textContent = state.funnelCh==='all' ? 'All channels' : CH[state.funnelCh].name;
+  const st = [];
+  if (t.imps) st.push(['Views',t.imps]);
+  st.push(['Clicks',t.visits*1.18],['Visits',t.visits],['Sign-ups',t.regs],['Downloads',t.installs],['Purchases',t.purchases]);
+  $('#bigFunnel').innerHTML = funnelHTML(st) + `<div class="fstage"><div class="row"><span>Revenue</span><b>${gbp(t.revenue)}</b></div>${t.spend?`<div class="drop">Ad spend ${gbp(t.spend)}, return ${ (t.revenue/t.spend).toFixed(2)}x</div>`:''}</div>`;
+  $('#chTable').innerHTML = `<thead><tr><th>Channel</th><th class="num">Views</th><th class="num">Visits</th><th class="num">Sign-ups</th><th class="num">Downloads</th><th class="num">Purchases</th><th class="num">Revenue</th><th class="num">Spend</th><th class="num">Cost per download</th><th>Attribution</th></tr></thead><tbody>${
+    CHANNELS.filter(c=>bc[c.id].visits>0).map(c=>{ const x=bc[c.id]; const at = c.paid?['good','Confirmed']:c.id==='google'?['good','Confirmed (UTM)']:c.id==='direct'?['','Unattributed']:['info','Mixed']; return `<tr><td><div class="who"><span class="dot" style="background:${c.color}"></span>${c.name}</div></td><td class="num">${x.imps?fmt(x.imps):'–'}</td><td class="num">${fmt(x.visits)}</td><td class="num">${fmt(x.regs)}</td><td class="num">${fmt(x.installs)}</td><td class="num">${fmt(x.purchases)}</td><td class="num">${gbp(x.revenue)}</td><td class="num">${x.spend?gbp(x.spend):'–'}</td><td class="num">${x.spend?'£'+(x.spend/x.installs).toFixed(2):'–'}</td><td><span class="tag ${at[0]}">${at[1]}</span></td></tr>`; }).join('')
+    || '<tr><td colspan="10" class="muted">No channels match this filter.</td></tr>'}</tbody>`;
+}
+
+/* ---------- Brief facts (shared with analyst) ---------- */
+function facts(){
+  const s = idx('2026-09-25');
+  const base = rowsBetween(s-7,s-1), day = rowsBetween(s,s);
+  const avg = sum(base,'installs')/7, dI = sum(day,'installs');
+  const tAvg = sum(base.filter(r=>r.ch==='tiktok'),'installs')/7, tDay = sum(day.filter(r=>r.ch==='tiktok'),'installs');
+  const taraDet = tDay*.55;
+  const w1 = rowsBetween(N-7,N-1), w0 = rowsBetween(N-14,N-8);
+  const m1 = w1.filter(r=>r.ch==='meta'), m0 = w0.filter(r=>r.ch==='meta');
+  const cpa1 = sum(m1,'spend')/sum(m1,'installs'), cpa0 = sum(m0,'spend')/sum(m0,'installs');
+  const g1 = w1.filter(r=>r.ch==='google'), g0 = w0.filter(r=>r.ch==='google');
+  const gr1 = sum(g1,'regs')/sum(g1,'visits'), gr0 = sum(g0,'regs')/sum(g0,'visits');
+  const wowI = sum(w1,'installs')/sum(w0,'installs')-1, wowR = sum(w1,'revenue')/sum(w0,'revenue')-1;
+  const y = rowsBetween(N-1,N-1), y7 = rowsBetween(N-8,N-2);
+  const yI = sum(y,'installs'), y7I = sum(y7,'installs')/7;
+  // creators last 7 days
+  const cw = CREATORS.map(c=>{ let v=0; w1.filter(r=>r.ch===c.ch).forEach(r=>v+=r.installs*shareFor(c,r.k)); return {c,v}; }).sort((a,b)=>b.v-a.v);
+  const last30 = rowsBetween(N-30,N-1), c30 = CREATORS.map(c=>{ let v=0,rev=0; last30.filter(r=>r.ch===c.ch&&r.k>=TRACK_START).forEach(r=>{const m=shareFor(c,r.k); v+=r.installs*m; rev+=r.revenue*m;}); return {c,v,rev}; }).sort((a,b)=>b.v-a.v);
+  const bc30 = byChannel(last30);
+  return {avg,dI,tAvg,tDay,taraDet,lift:dI/avg-1,tShare:(tDay-tAvg)/(dI-avg),cpa1,cpa0,gr1,gr0,wowI,wowR,yI,y7I,cw,c30,bc30,w1:totals(w1)};
+}
+
+function renderBrief(){
+  const F = facts();
+  $('#briefDate').textContent = 'Tuesday 29 September 2026, covering data up to Monday 28 September.';
+  $('#briefBody').innerHTML = `
+    <div class="bsec"><h3>Summary</h3>
+      <p style="margin:6px 0 0">Downloads were ${F.wowI>=0?'up':'down'} <b>${pct(Math.abs(F.wowI),0)}</b> week on week (${fmt(F.w1.installs)} in the last 7 days) and revenue was ${F.wowR>=0?'up':'down'} <b>${pct(Math.abs(F.wowR),0)}</b>. Yesterday brought ${fmt(F.yI)} downloads against a 7-day average of ${fmt(F.y7I)}.</p></div>
+    <div class="bsec"><h3><span class="dot" style="background:var(--amber)"></span>Unusual changes</h3><ul>
+      <li>Downloads on 25 Sep hit ${fmt(F.dI)}, <b>${pct(F.lift,0)} above</b> the previous 7-day average. TikTok organic accounts for ${shareText(F.tShare)} of the increase.<span class="tag good">Measured</span></li>
+      <li>About ${fmt(F.taraDet)} of that day's TikTok downloads came through @taxwithtara's Branch link, following her 24 Sep post.<span class="tag good">Confirmed</span></li>
+      <li>The rest of the lift lines up in time with the same post being shared widely. This is likely, not proven.<span class="tag info">Estimated</span></li></ul></div>
+    <div class="bsec"><h3><span class="dot" style="background:var(--green)"></span>Winners</h3><ul>
+      <li>${F.cw[0].c.handle} led creators with ${fmt(F.cw[0].v)} downloads in the last 7 days, followed by ${F.cw[1].c.handle} (${fmt(F.cw[1].v)}).</li>
+      <li>Google Search sign-up rate is ${pct(F.gr1)}, ${F.gr1>=F.gr0?'up':'down'} from ${pct(F.gr0)} the week before.</li></ul></div>
+    <div class="bsec"><h3><span class="dot" style="background:var(--red)"></span>Underperformers</h3><ul>
+      <li>Meta Ads cost per download rose to <b>£${F.cpa1.toFixed(2)}</b> from £${F.cpa0.toFixed(2)} (${pct(F.cpa1/F.cpa0-1,0)}). The Refund Estimator campaign has run the same creative for 3 weeks.</li>
+      <li>@jaysaves' 21 Sep post reached 2.4M views but produced only 0.09 downloads per 1,000 views. Strong for awareness, weak for results.</li></ul></div>
+    <div class="bsec"><h3><span class="dot" style="background:var(--mint)"></span>What to try next</h3><ul>
+      <li>Brief two more creators on the "expenses you can claim" format and track them on their own links.</li>
+      <li>Refresh the Refund Estimator creative, using a cut of Tara's hook as the first 3 seconds.</li>
+      <li>Add a clear download prompt to high-reach humour posts before boosting them.</li></ul></div>`;
+  $('#tg').innerHTML = `<div class="tgtop"><span class="av" style="background:var(--mint)">P</span>Pie Growth bot</div>
+    <div class="msg">Good morning Tommy. Downloads ${F.wowI>=0?'+':''}${pct(F.wowI,0)} this week. Spike on 25 Sep came mostly from TikTok (@taxwithtara). Meta cost per download up to £${F.cpa1.toFixed(2)}. Reply with any question.</div>
+    <div class="msg me">How many downloads did Tara's link bring on the 25th?</div>
+    <div class="msg">${fmt(F.taraDet)} confirmed via her Branch link, out of ${fmt(F.tDay)} TikTok downloads that day. Source: Branch and Firebase, 25 Sep 2026.</div>`;
+}
+function initBrief(){
+  $$('.sw').forEach(s=>s.onclick=()=>{ const on = s.getAttribute('aria-checked')!=='true'; s.setAttribute('aria-checked',on); toast(`${s.getAttribute('aria-label')} ${on?'turned on':'turned off'}`); });
+  $('#sendTest').onclick = ()=>{ const ch = $$('.sw').filter(s=>s.getAttribute('aria-checked')==='true').map(s=>s.getAttribute('aria-label').toLowerCase()); toast(ch.length?`Test brief sent to ${ch.join(', ')}`:'Turn on at least one delivery option'); };
+}
+
+/* ---------- Analyst ---------- */
+const SUGGEST = ['What drove the download spike on the 25th?','Which creator drove the most downloads last month?','How is Meta Ads cost per download trending?','Compare organic and paid revenue this month','Show email campaign performance'];
+function answer(q){
+  const F = facts(), s = q.toLowerCase();
+  const src = (a,b) => `<div class="src">Sources: ${a}. Period: ${b}.</div>`;
+  if (/mixpanel|email|mailgun|crm|linkedin|youtube|foxdata/.test(s))
+    return `<p>That data isn't connected yet, so I can't answer from stored metrics.</p><p>Email and CRM (Mailgun), Mixpanel and FoxData are planned as future add-ons. Connected today: Pie Social, Meta Ads, GA4 and Firebase, Branch, Search Console, App Store Connect, Google Play and TikTok organic.</p>${src('Connector registry','not applicable')}`;
+  if (/spike|25|jump|surge|jumped/.test(s))
+    return `<p>Downloads on 25 Sep reached <b>${fmt(F.dI)}</b>, ${pct(F.lift,0)} above the previous 7-day average of ${fmt(F.avg)}.</p>
+      <span class="lbl m">Measured</span><ul><li>TikTok organic downloads went from about ${fmt(F.tAvg)} a day to ${fmt(F.tDay)}, ${shareText(F.tShare)} of the increase.</li><li>${fmt(F.taraDet)} downloads came through @taxwithtara's Branch link.</li><li>Other channels stayed within their normal range.</li></ul>
+      <span class="lbl i">Interpretation, based on timing</span><p>The remaining TikTok lift most likely came from her 24 Sep post being shared beyond her link. Sign-up rate from TikTok dipped during the spike, which is typical of viral traffic with lower intent.</p>
+      ${src('Firebase (downloads), Branch (creator links), TikTok organic','18 to 25 Sep 2026')}`;
+  if (/creator|influencer|who drove|tara|priya/.test(s))
+    return `<p>In the last 30 days of confirmed tracking, <b>${F.c30[0].c.handle}</b> drove the most downloads.</p><span class="lbl m">Measured</span><ul>${F.c30.slice(0,4).map(x=>`<li>${x.c.handle} (${x.c.platform}): ${fmt(x.v)} downloads, ${gbp(x.rev)} revenue</li>`).join('')}</ul><p class="muted" style="font-size:13.5px">Counts start on 8 Sep 2026, when per-creator links went live.</p>${src('Branch creator links, App Store Connect and Google Play revenue','8 to 28 Sep 2026')}`;
+  if (/meta|cac|cpa|cost|ads|spend/.test(s))
+    return `<p>Meta Ads cost per download rose to <b>£${F.cpa1.toFixed(2)}</b> in the last 7 days, up from £${F.cpa0.toFixed(2)} the week before (${pct(F.cpa1/F.cpa0-1,0)}).</p><span class="lbl m">Measured</span><ul><li>Spend stayed roughly flat while downloads per visit fell.</li><li>30-day spend: ${gbp(F.bc30.meta.spend)}, return ${(F.bc30.meta.revenue/F.bc30.meta.spend).toFixed(2)}x.</li></ul><span class="lbl i">Interpretation</span><p>The Refund Estimator creative has run for 3 weeks, and falling click-through suggests fatigue. Worth testing a new first 3 seconds.</p>${src('Meta Marketing API, Firebase','15 to 28 Sep 2026')}`;
+  if (/organic|paid|compare/.test(s)){
+    const b=F.bc30, org=b.tiktok.revenue+b.instagram.revenue+b.google.revenue, paid=b.meta.revenue;
+    return `<p>Over the last 30 days, organic channels brought <b>${gbp(org)}</b> and paid brought <b>${gbp(paid)}</b>.</p><span class="lbl m">Measured</span><ul><li>TikTok organic: ${gbp(b.tiktok.revenue)}</li><li>Instagram organic: ${gbp(b.instagram.revenue)}</li><li>Google Search: ${gbp(b.google.revenue)}</li><li>Meta Ads: ${gbp(paid)} from ${gbp(b.meta.spend)} spend</li><li>Direct and other: ${gbp(b.direct.revenue)} (not attributed)</li></ul>${src('GA4 purchases, App Store Connect, Google Play, Meta Marketing API','30 Aug to 28 Sep 2026')}`;
+  }
+  if (/revenue|money|sales|purchase/.test(s)){
+    const b=F.bc30, tot=CHANNELS.reduce((a,c)=>a+b[c.id].revenue,0);
+    return `<p>Revenue over the last 30 days was <b>${gbp(tot)}</b>, and ${F.wowR>=0?'up':'down'} ${pct(Math.abs(F.wowR),0)} this week against last.</p><span class="lbl m">Measured</span><ul>${CHANNELS.map(c=>`<li>${c.name}: ${gbp(b[c.id].revenue)}</li>`).join('')}</ul>${src('App Store Connect, Google Play, GA4 purchases','30 Aug to 28 Sep 2026')}`;
+  }
+  if (/search|google|seo/.test(s))
+    return `<p>Google Search sign-up rate was <b>${pct(F.gr1)}</b> in the last 7 days, against ${pct(F.gr0)} the week before.</p><span class="lbl m">Measured</span><ul><li>30-day visits: ${fmt(F.bc30.google.visits)}</li><li>30-day sign-ups: ${fmt(F.bc30.google.regs)}</li></ul>${src('Google Search Console, GA4','30 Aug to 28 Sep 2026')}`;
+  return `<p>I answer only from stored metrics, and I couldn't match that question to data I hold.</p><p>Try asking about downloads, a specific day, creators, Meta Ads cost, revenue, or organic versus paid.</p>`;
+}
+function ask(q){
+  if (!q.trim()) return;
+  const log = $('#log');
+  log.insertAdjacentHTML('beforeend', `<div class="bubble q"></div>`);
+  log.lastElementChild.textContent = q;
+  log.insertAdjacentHTML('beforeend', `<div class="bubble a typing"><span></span><span></span><span></span></div>`);
+  log.scrollTop = log.scrollHeight;
+  setTimeout(()=>{ const t=log.querySelector('.typing'); t.classList.remove('typing'); t.innerHTML=answer(q); log.scrollTop=log.scrollHeight; }, 750);
+}
+function initAnalyst(){
+  $('#suggest').innerHTML = SUGGEST.map(s=>`<button class="chipbtn" type="button">${s}</button>`).join('');
+  $$('#suggest button').forEach(b=>b.onclick=()=>ask(b.textContent));
+  $('#askForm').onsubmit = e=>{ e.preventDefault(); const v=$('#askIn').value; $('#askIn').value=''; ask(v); };
+  $('#log').innerHTML = `<div class="bubble a"><p>Hi Tommy. Ask me anything about visits, sign-ups, downloads, purchases or revenue. I'll tell you where each number comes from.</p></div>`;
+}
+
+/* ---------- Sources ---------- */
+const CONNS = [
+  {n:'Pie Social (Supabase)', d:'Accounts, posts, publishing history, social stats', st:'ok', sched:'Every 15 min', last:4, hist:'All stored data', prog:100},
+  {n:'Meta Marketing API', d:'Spend, campaigns, ads, creatives, conversions', st:'ok', sched:'Hourly', last:22, hist:'Loading back to Sep 2023', prog:64},
+  {n:'GA4 + Firebase', d:'Web and app events, sign-ups, purchases', st:'ok', sched:'Every 6 hours', last:95, hist:'Loading to property start', prog:78},
+  {n:'Branch', d:'Links, clicks, installs, creator attribution', st:'ok', sched:'Hourly', last:18, hist:'Depth set by plan (to confirm)', prog:100},
+  {n:'Google Search Console', d:'Queries, pages, clicks, impressions', st:'ok', sched:'Daily', last:410, hist:'16 months (Google limit)', prog:100},
+  {n:'App Store Connect', d:'Downloads, sales, store trends', st:'warn', msg:"Apple's report for 28 Sep isn't out yet. This is normal and it retries hourly.", sched:'Daily', last:1440, hist:'Multi-year reports', prog:91},
+  {n:'Google Play', d:'Downloads, store trends', st:'ok', sched:'Daily', last:380, hist:'Full history via reporting export', prog:88},
+  {n:'TikTok organic', d:'Views, engagement per account and post', st:'ok', sched:'Every 6 hours', last:130, hist:'60-day window, stored daily from now on', prog:100},
+  {n:'TikTok Ads', d:'Paid campaigns and conversions', st:'pending', msg:'Waiting for TikTok Marketing API approval (submitted 1 Sep).', sched:'Starts after approval', last:null, hist:'Available after approval', prog:0}
+];
+const ago = m => m===null?'Not yet':m<1?'Just now':m<60?`${m} min ago`:m<1440?`${Math.round(m/60)} h ago`:`${Math.round(m/1440)} day ago`;
+function renderSources(){
+  const tag = {ok:['good','Healthy'],warn:['warn','Delayed'],pending:['','Awaiting approval']};
+  $('#conns').innerHTML = CONNS.map((c,i)=>`<div class="card conn">
+    <div class="top"><h3>${c.n}</h3><span class="tag ${tag[c.st][0]}">${tag[c.st][1]}</span></div>
+    <p>${c.msg||c.d}</p>
+    <div class="meta"><span>Last success</span><span>${ago(c.last)}</span><span>Schedule</span><span>${c.sched}</span><span>History</span><span>${c.hist}</span></div>
+    <div class="prog" aria-label="History loaded ${c.prog}%"><i style="width:${c.prog}%"></i></div>
+    <button class="pill sm ghost" data-ci="${i}" ${c.st==='pending'?'disabled style="opacity:.5;cursor:not-allowed"':''}>Refresh now</button></div>`).join('');
+  $$('[data-ci]').forEach(b=>b.onclick=()=>{ const c=CONNS[+b.dataset.ci]; b.innerHTML='<span class="spin"></span> Refreshing'; b.disabled=true;
+    setTimeout(()=>{ c.last=0; if(c.st==='warn'){c.st='ok';delete c.msg;} c.prog=Math.min(100,c.prog+3); renderSources(); toast(`${c.n} refreshed`); }, 1200); });
+  const D = [
+    ['Downloads (total)','App Store Connect + Google Play','Official store counts. Never added to Branch or Firebase installs.'],
+    ['Downloads (by creator or link)','Branch','Used for attribution only.'],
+    ['Sign-ups','Firebase (app) and GA4 (web)','One definition, agreed in week 1.'],
+    ['Purchases and revenue','Stores (app) and GA4 purchase event (web)','Meta-reported revenue shown separately as platform-claimed.'],
+    ['Ad spend, clicks, impressions','Meta Marketing API',''],
+    ['Organic search','Google Search Console','Clicks and impressions from Google, not GA4.'],
+    ['Social views and engagement','Pie Social + TikTok organic','Reported as reach, not as conversions.']
+  ];
+  $('#dict').innerHTML = `<thead><tr><th>Metric</th><th>Source of truth</th><th>Note</th></tr></thead><tbody>${D.map(d=>`<tr><td><b style="font-weight:500">${d[0]}</b></td><td>${d[1]}</td><td style="white-space:normal" class="muted">${d[2]||'–'}</td></tr>`).join('')}</tbody>`;
+}
+
+/* ---------- Router + theme ---------- */
+const VIEWS = {overview:renderOverview, creators:renderCreators, funnel:renderFunnel, brief:renderBrief, analyst:()=>{}, sources:renderSources};
+function render(){
+  $('#filters').style.display = ['overview','creators','funnel'].includes(state.view) ? '' : 'none';
+  filterNote();
+  VIEWS[state.view]();
+}
+function go(v){
+  state.view = v;
+  $$('nav button').forEach(b=>{ if (b.dataset.view===v) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
+  $$('.view').forEach(s=>s.classList.toggle('on', s.id==='v-'+v));
+  try{ localStorage.setItem('pie-view', v); }catch(e){}
+  render();
+  window.scrollTo({top:0});
+}
+$$('nav button').forEach(b=>b.onclick=()=>go(b.dataset.view));
+$$('#trendSeg button').forEach(b=>b.onclick=()=>{ state.metric=b.dataset.m; $$('#trendSeg button').forEach(x=>x.setAttribute('aria-pressed',x===b)); renderOverview(); });
+$('#themeBtn').onclick = ()=>{
+  const root=document.documentElement, dark = root.dataset.theme ? root.dataset.theme==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try{ localStorage.setItem('pie-theme', root.dataset.theme); }catch(e){}
+  render();
+};
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', ()=>render());
+$('#acct').onclick = ()=>toast('Signed in as Tommy, Pie Tax');
+window.addEventListener('scroll', ()=>$('#hdr').classList.toggle('scrolled', scrollY>4), {passive:true});
+
+(function boot(){
+  try{ const t=localStorage.getItem('pie-theme'); if(t) document.documentElement.dataset.theme=t; }catch(e){}
+  initFilters(); initCreators(); initBrief(); initAnalyst();
+  let v='overview'; try{ const s=localStorage.getItem('pie-view'); if(s && VIEWS[s]) v=s; }catch(e){}
+  go(v);
+})();
+</script>
+</body>
+</html>
